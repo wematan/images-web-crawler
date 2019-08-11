@@ -40,10 +40,10 @@ class ImagesDownloader(object):
         for keyword, links in self.images_links.items():
             DatasetBuilder.check_folder_existance(target_folder + '/' + keyword, display_msg=False)
             for link in links:
-                target_file = target_folder + '/' + keyword + '/' + link.split('/')[-1]
+                target_file = target_folder + '/' + keyword + '/' + "crawler_" + link.split('/')[-1]
                 try:
                     f = urllib.URLopener()
-                    f.retrieve(link, target_file)
+                    f.retrieve(link, target_file.strip())
                 except IOError:
                     self.failed_links.append(link)
                 progress = progress + 1

@@ -49,7 +49,7 @@ class WebCrawler(object):
             number_links = 100
         if not keywords:
             self.error("Error: No keyword")
-        elif isinstance(keywords, basestring):
+        elif isinstance(keywords, str):
             keywords = [keywords]
         self.keywords = [keywords]
 
@@ -89,33 +89,37 @@ class WebCrawler(object):
         # get first page and store:
         print("Crawling Google Search Engine...")
         service = build("customsearch", "v1", developerKey=api_key)
-        response = service.cse().list(q=keyword,
-                                      cx=engine_id,
-                                      searchType='image',
-                                      num=items_per_page,
-                                      fileType='jpg&img;png&img;bmp&img;gif&img',
-                                      fields='items/link, queries',
-                                     ).execute()
-        items = response['items']
-        for image in items:
-            links.append(image['link'])
-
-        # get next pages:
-        for i in range(1, pages_nbr):
-            sys.stdout.flush()
+        # For the case of API cap exceeded error
+        try:
             response = service.cse().list(q=keyword,
                                           cx=engine_id,
                                           searchType='image',
                                           num=items_per_page,
                                           fileType='jpg&img;png&img;bmp&img;gif&img',
                                           fields='items/link, queries',
-                                          start=response['queries']['nextPage'][0]['startIndex'],
                                          ).execute()
             items = response['items']
             for image in items:
                 links.append(image['link'])
-        print("\r >> ", len(links), " links extracted...", end="")
 
+            # get next pages:
+            for i in range(1, pages_nbr):
+                sys.stdout.flush()
+                response = service.cse().list(q=keyword,
+                                              cx=engine_id,
+                                              searchType='image',
+                                              num=items_per_page,
+                                              fileType='jpg&img;png&img;bmp&img;gif&img',
+                                              fields='items/link, queries',
+                                              start=response['queries']['nextPage'][0]['startIndex'],
+                                             ).execute()
+                items = response['items']
+                for image in items:
+                    links.append(image['link'])
+            print("\r >> ", len(links), " links extracted...", end="")
+        except:
+            print("*"*10+"Exceeded Google's API Results Limit."+"*"*10)
+            return links
         # store and reduce the number of images if too much:
         return links
 
@@ -131,37 +135,41 @@ class WebCrawler(object):
         pages_nbr = int(ceil(number_links / items_per_page))
         links = []
 
-        # get links from the first page:
-        print("Carwling Flickr Search...")
-        flickr = FlickrAPI(api_key, api_secret)
-        response = flickr.photos_search(api_key=api_key,
-                                        text=keyword,
-                                        per_page=items_per_page,
-                                        media='photos',
-                                        sort='relevance')
-        images = [im for im in list(response.iter()) if im.tag == 'photo']
-        for photo in images:
-            photo_url = "https://farm{0}.staticflickr.com/{1}/{2}_{3}.jpg". format(
-                photo.get('farm'), photo.get('server'), photo.get('id'), photo.get('secret'))
-            links.append(photo_url)
-        print(" >> ", len(links), " links extracted...", end="")
-
-        # get next pages:
-        for i in range(1, pages_nbr):
+        try:
+            # get links from the first page:
+            print("Carwling Flickr Search...")
+            flickr = FlickrAPI(api_key, api_secret)
             response = flickr.photos_search(api_key=api_key,
                                             text=keyword,
                                             per_page=items_per_page,
                                             media='photos',
-                                            page = i + 1,  
                                             sort='relevance')
             images = [im for im in list(response.iter()) if im.tag == 'photo']
             for photo in images:
-                link = "https://farm{0}.staticflickr.com/{1}/{2}_{3}.jpg". format(
+                photo_url = "https://farm{0}.staticflickr.com/{1}/{2}_{3}.jpg". format(
                     photo.get('farm'), photo.get('server'), photo.get('id'), photo.get('secret'))
-                links.append(link)
-            print("\r >> ", len(links), " links extracted...", end="")
+                links.append(photo_url)
+            print(" >> ", len(links), " links extracted...", end="")
 
-        # store and reduce the number of images if too much:
+            # get next pages:
+            for i in range(1, pages_nbr):
+                response = flickr.photos_search(api_key=api_key,
+                                                text=keyword,
+                                                per_page=items_per_page,
+                                                media='photos',
+                                                page = i + 1,
+                                                sort='relevance')
+                images = [im for im in list(response.iter()) if im.tag == 'photo']
+                for photo in images:
+                    link = "https://farm{0}.staticflickr.com/{1}/{2}_{3}.jpg". format(
+                        photo.get('farm'), photo.get('server'), photo.get('id'), photo.get('secret'))
+                    links.append(link)
+                print("\r >> ", len(links), " links extracted...", end="")
+
+            # store and reduce the number of images if too much:
+        except:
+            print("*"*10+"Exceeded Google's API Results Limit."+"*"*10)
+            return links
         return links
 
     def save_urls_to_json(self, filename):
@@ -181,7 +189,7 @@ class WebCrawler(object):
         with open(filename, 'w') as links_file:
             for keyword in self.images_links:
                 for link in self.images_links[keyword]:
-                    links_file.write(link)
+                    links_file.write(keyword + ":" + link + "\n")
         print("\nLinks saved to '", filename, "'")
 
     def load_urls(self, filename):
