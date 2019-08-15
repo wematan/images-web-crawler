@@ -33,10 +33,15 @@ class ImagesDownloader(object):
         if target_folder[-1] == '/':
             target_folder = target_folder[:-1]
 
-        # start downloading:
-        print("Downloading files...")
         progress = 0
         images_nbr = sum([len(self.images_links[key]) for key in self.images_links])
+        if images_nbr == 0:
+            print("No Images Found.")
+            return
+
+        # start downloading:
+        print("Downloading files...")
+
         for keyword, links in self.images_links.items():
             DatasetBuilder.check_folder_existance(target_folder + '/' + keyword, display_msg=False)
             for link in links:
