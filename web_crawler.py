@@ -53,6 +53,9 @@ class WebCrawler(object):
             keywords = [keywords]
         self.keywords = [keywords]
 
+        # Error flag for when something goes wrong:
+        err_flag = False
+
         # call methods for fetching image links in the selected search engines:
         print("Start fetching...")
         for keyword in keywords:
@@ -64,8 +67,11 @@ class WebCrawler(object):
                 except AttributeError:
                     self.error('funciton fetch_from_' + engine + '() not defined')
                 temporary_links = method(keyword, keys[0], keys[1], number_links)
-                extracted_links += temporary_links
-                print("\r >> ", len(temporary_links), " links extracted", end="\n")
+                if temporary_links is None:
+                    err_flag = True
+                else:
+                    extracted_links += temporary_links
+                    print("\r >> ", len(temporary_links), " links extracted", end="\n")
 
             # remove duplicated links:
             if remove_duplicated_links:
@@ -76,6 +82,9 @@ class WebCrawler(object):
 
             # store the links into the global list:
             self.images_links[keyword] = extracted_links
+
+            if err_flag:
+                break
 
     def fetch_from_google(self, keyword, api_key, engine_id, number_links=50):
         """Fetch images from google using API Key"""
@@ -119,7 +128,7 @@ class WebCrawler(object):
             print("\r >> ", len(links), " links extracted...", end="")
         except:
             print("*"*10+"Exceeded Google's API Results Limit."+"*"*10)
-            return links
+            return None
         # store and reduce the number of images if too much:
         return links
 
