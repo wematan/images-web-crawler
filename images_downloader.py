@@ -2,7 +2,7 @@
 """ ImagesDownloader: get a list of links, download the images and order them in a folder"""
 
 from __future__ import print_function
-import urllib
+import urllib.request
 import sys
 from dataset_builder import DatasetBuilder
 
@@ -47,15 +47,20 @@ class ImagesDownloader(object):
             for link in links:
                 target_file = target_folder + '/' + keyword + '/' + "crawler_" + link.split('/')[-1]
                 try:
-                    f = urllib.URLopener()
-                    f.retrieve(link, target_file.strip())
+                    request = urllib.request.urlopen(link, timeout=500)
+                    with open(target_file.strip(), 'wb') as f:
+                        f.write(request.read())
+                    # urllib.request.urlretrieve(link, target_file.strip())
                 except IOError:
                     self.failed_links.append(link)
+                except Exception as e:
+                    print(e)
+                    self.failed_links.append(link)
                 progress = progress + 1
-                print("\r >> Download progress: ", (progress * 100 / images_nbr), "%...", end="")
+                print("\r >> Download progress: ", int(progress * 100 / images_nbr), "%...", end="")
                 sys.stdout.flush()
 
-        print("\r >> Download progress: ", (progress * 100 / images_nbr), "%")
+        print("\r >> Download progress: ", int(progress * 100 / images_nbr), "%")
         print(" >> ", (progress - len(self.failed_links)), " images downloaded")
 
         # save failed links:
